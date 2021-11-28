@@ -9,9 +9,10 @@ import SwiftUI
 
 @main
 struct MarketAssistApp: App {
+    @StateObject var api = APIObject()
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView().environmentObject(api)
         }
     }
 }
