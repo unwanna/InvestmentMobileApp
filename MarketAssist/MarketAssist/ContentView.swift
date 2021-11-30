@@ -11,12 +11,13 @@ struct ContentView: View {
     @EnvironmentObject var api : APIObject
     @State var searchText = ""
     @State var searching = false
-    //let searchedTickers : [String] = ["AAPL", "FB"]
     
     var body: some View {
         NavigationView {
                     VStack(alignment: .leading) {
                         SearchBar(searchText: $searchText, searching: $searching).environmentObject(api)
+                        
+                        CompanyInfo(dataObjects: $api.responseObj)
                         List {
                             ForEach(api.searchedTickers.filter({ (ticker: String) -> Bool in
                                 return ticker.hasPrefix(searchText) || searchText == ""
@@ -25,7 +26,7 @@ struct ContentView: View {
                             }
                         }
                             .listStyle(GroupedListStyle())
-                            .navigationTitle(searching ? "Searching" : "MarketAssist")
+                            .navigationTitle(searching ? "Searching" : "Market Assist")
                             .toolbar {
                                 if searching {
                                     Button("Cancel") {
@@ -62,7 +63,7 @@ struct SearchBar: View {
     var body: some View {
         ZStack {
             Rectangle()
-                .foregroundColor(Color("LightGray"))
+                .foregroundColor(Color(UIColor.white))
             HStack {
                 Image(systemName: "magnifyingglass")
                 TextField("Search ..", text: $searchText) { startedEditing in
@@ -87,6 +88,34 @@ struct SearchBar: View {
     }
 }
 
+struct CompanyInfo : View {
+    @Binding var dataObjects: [DataObject]
+    
+    var body: some View {
+        List {
+            ForEach(dataObjects, id: \.self) { dataObject in
+                ZStack {
+                    HStack {
+                        Text(dataObject.companyName)
+                        AsyncImage(url: URL(string: dataObject.image))
+                    }
+                    HStack {
+                        Text(dataObject.symbol)
+                        Text("\(dataObject.price)")
+                    }
+                    HStack {
+                        Text(dataObject.industry)
+                        Text(dataObject.website)
+                    }
+                }
+                    .frame(height: 40)
+                    .cornerRadius(13)
+                    .padding()
+            }
+        }
+        .listStyle(GroupedListStyle())
+    }
+}
 
 extension UIApplication {
      func dismissKeyboard() {         sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
