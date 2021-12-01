@@ -10,9 +10,11 @@ import SwiftUI
 @main
 struct MarketAssistApp: App {
     @StateObject var api = APIObject()
+    @StateObject var watchlist = Watchlist()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView().environmentObject(api)
+            ContentView().environmentObject(api).environmentObject(watchlist)
         }
     }
 }
