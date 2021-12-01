@@ -47,11 +47,11 @@ struct DataObject: Codable, Hashable {
     var isActivelyTrading : Bool
     var isAdr : Bool
     var isFund : Bool
+    
 }
 
 class APIObject : NSObject, ObservableObject {
     @Published var responseObj = [DataObject]()
-    @Published var searchedTickers = [String]()
     
     override init() {
         super.init()
@@ -66,16 +66,10 @@ class APIObject : NSObject, ObservableObject {
                 let data = try JSONDecoder().decode([DataObject].self, from: data!)
                 DispatchQueue.main.async {
                     self.responseObj = data
-                    if (self.searchedTickers.contains(ticker) == false) {
-                        self.searchedTickers.append(ticker)
-                    }
                 }
             } catch {
                 DispatchQueue.main.async {
                     self.responseObj = []
-                    if (self.searchedTickers.contains(ticker) == false) {
-                        self.searchedTickers.append(ticker)
-                    }
                 }
             }
         }

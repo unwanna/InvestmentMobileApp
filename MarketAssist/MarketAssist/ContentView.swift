@@ -14,38 +14,32 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-                    VStack(alignment: .leading) {
-                        SearchBar(searchText: $searchText, searching: $searching).environmentObject(api)
-                        
-                        CompanyInfo(dataObjects: $api.responseObj)
-                        List {
-                            ForEach(api.searchedTickers.filter({ (ticker: String) -> Bool in
-                                return ticker.hasPrefix(searchText) || searchText == ""
-                            }), id: \.self) { ticker in
-                                Text(ticker)
-                            }
-                        }
-                            .listStyle(GroupedListStyle())
-                            .navigationTitle(searching ? "Searching" : "Market Assist")
-                            .toolbar {
-                                if searching {
-                                    Button("Cancel") {
-                                        searchText = ""
-                                        withAnimation {
-                                           searching = false
-                                           UIApplication.shared.dismissKeyboard()
-                                        }
-                                    }
+            VStack(alignment: .leading) {
+                SearchBar(searchText: $searchText, searching: $searching).environmentObject(api)
+                    .listStyle(GroupedListStyle())
+                    .navigationTitle(searching ? "Searching" : "Market Assist")
+                    .toolbar {
+                        if searching {
+                            Button("Cancel") {
+                                searchText = ""
+                                withAnimation {
+                                   searching = false
+                                   UIApplication.shared.dismissKeyboard()
                                 }
                             }
-                            .gesture(DragGesture()
-                                        .onChanged({ _ in
-                                UIApplication.shared.dismissKeyboard()
-                                searchText = ""
-                                        })
-                            )
+                        }
                     }
-                }
+                    .gesture(DragGesture()
+                                .onChanged({ _ in
+                        UIApplication.shared.dismissKeyboard()
+                        searchText = ""
+                                })
+                    )
+                
+                CompanyInfo(dataObjects: $api.responseObj)
+                Spacer()
+            }
+        }
     }
 }
 
@@ -89,31 +83,28 @@ struct SearchBar: View {
 }
 
 struct CompanyInfo : View {
+    @State private var isAnimating = false
     @Binding var dataObjects: [DataObject]
+    @State var isExpanded : Bool = false
     
     var body: some View {
-        List {
-            ForEach(dataObjects, id: \.self) { dataObject in
-                ZStack {
-                    HStack {
-                        Text(dataObject.companyName)
-                        AsyncImage(url: URL(string: dataObject.image))
-                    }
-                    HStack {
-                        Text(dataObject.symbol)
-                        Text("\(dataObject.price)")
-                    }
-                    HStack {
-                        Text(dataObject.industry)
-                        Text(dataObject.website)
-                    }
-                }
-                    .frame(height: 40)
-                    .cornerRadius(13)
-                    .padding()
-            }
+        ForEach($dataObjects, id: \.self) { $dataObject in
+            CardView(isExpanded: $isExpanded, dataObject: $dataObject)
+                .scaleEffect(isAnimating ? 0.5 : 1)
+                .opacity(isAnimating ? 0 : 1)
+                .gesture(
+                    TapGesture()
+                        .onEnded{_ in
+                             withAnimation(Animation.easeOut(duration: 0.5)) {
+                                 self.isAnimating = true
+                             }
+
+                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                 self.isAnimating = false
+                                 self.isExpanded = !isExpanded
+                             }}
+                )
         }
-        .listStyle(GroupedListStyle())
     }
 }
 
