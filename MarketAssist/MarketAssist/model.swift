@@ -19,7 +19,7 @@ class Watchlist : ObservableObject {
     }
     
     init() {
-        list = []
+        list = [Stock(ticker: "AAPL"), Stock(ticker: "TSLA")]
     }
     
     // take API data and make a struct then add that struct to the array
