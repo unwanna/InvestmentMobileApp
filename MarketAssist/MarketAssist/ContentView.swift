@@ -44,7 +44,7 @@ struct ContentView: View {
                                 searchText = ""
                                         })
                             )
-                        CompanyInfo(dataObjects: $api.responseObj)
+                        CompanyInfo(dataObjects: $api.responseObj).environmentObject(watchlist)
                         Spacer()
                     }
                     
@@ -79,12 +79,15 @@ struct MenuContent: View {
     @EnvironmentObject var watchlist : Watchlist
     @EnvironmentObject var api : APIObject
     
+    @Binding var toggleMenu : () -> Void
+    
     var body: some View {
         List {
             Section(header: Text("Watchlist").font(.title).bold()) {
                 ForEach(watchlist.list, id: \.id) { stock in
                     Button {
                         api.getBasicStockInfo(ticker: stock.ticker)
+                        toggleMenu()
                     } label: {
                         Text(String(stock.ticker))
                     }
@@ -99,7 +102,7 @@ struct MenuContent: View {
 struct SideMenu: View {
     let width: CGFloat
     let isOpen: Bool
-    let menuClose: () -> Void
+    @State var menuClose: () -> Void
     
     var body: some View {
         ZStack {
@@ -114,7 +117,7 @@ struct SideMenu: View {
             }
             
             HStack {
-                MenuContent()
+                MenuContent(toggleMenu: $menuClose)
                     .frame(width: self.width)
                     .background(Color.white)
                     .offset(x: self.isOpen ? 0 : -self.width)
@@ -160,9 +163,13 @@ struct SearchBar: View {
 }
 
 struct CompanyInfo : View {
+    @GestureState private var isLongPressDetected = false
     @State private var isAnimating = false
+    @State private var showingActionSheet = false
     @Binding var dataObjects: [DataObject]
+    @EnvironmentObject var watchlist : Watchlist
     @State var isExpanded : Bool = false
+    @State private var isDone = false
     
     var body: some View {
         ForEach($dataObjects, id: \.self) { $dataObject in
@@ -172,15 +179,46 @@ struct CompanyInfo : View {
                 .gesture(
                     TapGesture()
                         .onEnded{_ in
-                             withAnimation(Animation.easeOut(duration: 0.5)) {
-                                 self.isAnimating = true
-                             }
-
-                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                                 self.isAnimating = false
-                                 self.isExpanded = !isExpanded
-                             }}
+                            withAnimation(Animation.easeOut(duration: 0.5)) {
+                                self.isAnimating = true
+                            }
+                            
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                self.isAnimating = false
+                                self.isExpanded = !isExpanded
+                            }}
                 )
+                .gesture(
+                    LongPressGesture(minimumDuration: 2)
+                        .updating($isLongPressDetected) { currentState, gestureState, transaction in
+                                        DispatchQueue.main.async {
+                                            isDone = false
+                                            showingActionSheet = true
+                                        }
+                                        gestureState = currentState
+                                        transaction.animation = Animation.easeIn(duration: 2)
+                                    }
+                                    .onEnded { done in
+                                        isDone = done
+                                    }
+                    
+                )
+                .actionSheet(isPresented: $showingActionSheet) {
+                    ActionSheet(title: Text("Edit Watchlist"), buttons: [
+                        .default(
+                            Text("Add to Watchlist"),
+                            action: {
+                                watchlist.addToList(ticker: dataObject.symbol)
+                            }),
+                        .destructive(
+                            Text("Remove from Watchlist"),
+                            action: {
+                                watchlist.removeFromList(ticker: dataObject.symbol)
+                            }),
+                        .cancel()
+                    ])
+                }
+            
         }
     }
 }
