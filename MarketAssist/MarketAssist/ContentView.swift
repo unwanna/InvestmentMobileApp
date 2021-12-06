@@ -13,11 +13,22 @@ struct ContentView: View {
     @EnvironmentObject var watchlist : Watchlist
     @State var searchText = ""
     @State var searching = false
-
+    
+    @State var testGainers = [
+        StockObj(ticker: "ARRY", changes: 17.69, price: "46.57", changesPercentage: "(+61.25%)", companyName: "Array BioPharma Inc."),
+        StockObj(ticker: "LMPX", changes: 4.25, price: "17.66", changesPercentage: "(+31.69%)", companyName: "Lmp Automotive Holdings Inc"),
+        StockObj(ticker: "FFG", changes: 11.62, price: "48.87", changesPercentage: "(+31.19%)", companyName: "FBL Financial Group Inc")
+    ]
+    @State var testLosers = [
+        StockObj(ticker: "FFHL", changes: -1.61, price: "4.1", changesPercentage: "(-28.20%)", companyName: "Fuwei Films (Holdings) Co Ltd"),
+        StockObj(ticker: "AMJL", changes: -0.3557, price: "1.2", changesPercentage: "(-22.86%)", companyName: "Lmp Automotive Holdings Inc"),
+        StockObj(ticker: "GASL", changes: -1.84, price: "6.22", changesPercentage: "(-22.83%)", companyName: "Direxion Daily Natural Gas Related Bull 3X Shares")
+    ]
+    
     func openMenu() {
         self.menuOpen.toggle()
     }
-
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -32,8 +43,8 @@ struct ContentView: View {
                                     Button("Cancel") {
                                         searchText = ""
                                         withAnimation {
-                                           searching = false
-                                           UIApplication.shared.dismissKeyboard()
+                                            searching = false
+                                            UIApplication.shared.dismissKeyboard()
                                         }
                                     }
                                 }
@@ -42,28 +53,31 @@ struct ContentView: View {
                                         .onChanged({ _ in
                                 UIApplication.shared.dismissKeyboard()
                                 searchText = ""
-                                        })
+                            })
                             )
+                        InitialInfoView(dailyGainers: $api.dailyGainers, dailyLosers: $api.dailyLosers, searchText: $searchText).environmentObject(api)
+//                        InitialInfoView(dailyGainers: $testGainers, dailyLosers: $testLosers, searchText: $searchText).environmentObject(api)
                         CompanyInfo(dataObjects: $api.responseObj).environmentObject(watchlist)
                         Spacer()
                     }
                     
                     // nav button in corner
-                        .navigationBarItems(leading: (
-                          Button(action: { // the button to open/close the menu
+                    .navigationBarItems(leading: (
+                        Button(action: { // the button to open/close the menu
                             withAnimation {
-                              self.menuOpen.toggle()
-                             }
-                           }) {
-                             Image(systemName: "line.horizontal.3")
-                               .imageScale(.large)
-                           }
-                         ))
+                                self.menuOpen.toggle()
+                            }
+                        }) {
+                            Image(systemName: "line.horizontal.3")
+                                .imageScale(.large)
+                        }
+                    ))
                 }
                 
                 SideMenu(width: 270,
                          isOpen: self.menuOpen,
-                         menuClose: self.openMenu)
+                         menuClose: self.openMenu,
+                         searchText: $searchText)
             }
         }
     }
@@ -80,20 +94,55 @@ struct MenuContent: View {
     @EnvironmentObject var api : APIObject
     
     @Binding var toggleMenu : () -> Void
+    @Binding var searchText : String
+    
+    @State var listName : String
     
     var body: some View {
         List {
-            Section(header: Text("Watchlist").font(.title).bold()) {
+            Section(header: Text(listName).font(.title).bold()) {
                 ForEach(watchlist.list, id: \.id) { stock in
                     Button {
                         api.getBasicStockInfo(ticker: stock.ticker)
                         toggleMenu()
+                        searchText = ""
                     } label: {
                         Text(String(stock.ticker))
                     }
                 }
             }
-                .headerProminence(.increased)
+            .headerProminence(.increased)
+        }
+    }
+}
+
+struct MenuList: View {
+    @EnvironmentObject var api : APIObject
+    
+    @Binding var toggleMenu : () -> Void
+    @Binding var searchText : String
+    
+    @State var listName : String
+    
+    var list : [Stock] = [
+        Stock(ticker: "AAPL"), Stock(ticker: "FB"), Stock(ticker: "TSLA"), Stock(ticker: "NKE"),
+        Stock(ticker: "DIS"), Stock(ticker: "MSFT"), Stock(ticker: "SONY"), Stock(ticker: "V"),
+    ]
+    
+    var body: some View {
+        List {
+            Section(header: Text(listName).font(.title).bold()) {
+                ForEach(list, id: \.id) { stock in
+                    Button {
+                        api.getBasicStockInfo(ticker: stock.ticker)
+                        toggleMenu()
+                        searchText = ""
+                    } label: {
+                        Text(String(stock.ticker))
+                    }
+                }
+            }
+            .headerProminence(.increased)
         }
     }
 }
@@ -103,6 +152,7 @@ struct SideMenu: View {
     let width: CGFloat
     let isOpen: Bool
     @State var menuClose: () -> Void
+    @Binding var searchText : String
     
     var body: some View {
         ZStack {
@@ -116,13 +166,21 @@ struct SideMenu: View {
                 self.menuClose()
             }
             
+            
             HStack {
-                MenuContent(toggleMenu: $menuClose)
-                    .frame(width: self.width)
-                    .background(Color.white)
-                    .offset(x: self.isOpen ? 0 : -self.width)
-                    .animation(.default)
-                
+                VStack {
+                    MenuList(toggleMenu: $menuClose, searchText: $searchText, listName: "Popular Stocks")
+                        .frame(width: self.width)
+                        .background(Color.white)
+                        .offset(x: self.isOpen ? 0 : -self.width)
+                        .animation(.default)
+                    MenuContent(toggleMenu: $menuClose, searchText: $searchText, listName: "Watchlist")
+                        .frame(width: self.width)
+                        .background(Color.white)
+                        .offset(x: self.isOpen ? 0 : -self.width)
+                        .animation(.default)
+                    
+                }
                 Spacer()
             }
         }
@@ -151,14 +209,15 @@ struct SearchBar: View {
                         searching = false
                     }
                     api.getBasicStockInfo(ticker: searchText)
+                    searchText = ""
                 }
             }
             .foregroundColor(.gray)
             .padding(.leading, 13)
         }
-            .frame(height: 40)
-            .cornerRadius(13)
-            .padding()
+        .frame(height: 40)
+        .cornerRadius(13)
+        .padding()
     }
 }
 
@@ -191,16 +250,16 @@ struct CompanyInfo : View {
                 .gesture(
                     LongPressGesture(minimumDuration: 2)
                         .updating($isLongPressDetected) { currentState, gestureState, transaction in
-                                        DispatchQueue.main.async {
-                                            isDone = false
-                                            showingActionSheet = true
-                                        }
-                                        gestureState = currentState
-                                        transaction.animation = Animation.easeIn(duration: 2)
-                                    }
-                                    .onEnded { done in
-                                        isDone = done
-                                    }
+                            DispatchQueue.main.async {
+                                isDone = false
+                                showingActionSheet = true
+                            }
+                            gestureState = currentState
+                            transaction.animation = Animation.easeIn(duration: 2)
+                        }
+                        .onEnded { done in
+                            isDone = done
+                        }
                     
                 )
                 .actionSheet(isPresented: $showingActionSheet) {
@@ -224,6 +283,6 @@ struct CompanyInfo : View {
 }
 
 extension UIApplication {
-     func dismissKeyboard() {         sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-     }
- }
+    func dismissKeyboard() {         sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+}

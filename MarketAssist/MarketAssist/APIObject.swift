@@ -47,14 +47,34 @@ struct DataObject: Codable, Hashable {
     var isActivelyTrading : Bool
     var isAdr : Bool
     var isFund : Bool
+}
+
+struct StockObj: Codable, Hashable {
+    var id : UUID = UUID()
+    var ticker : String
+    var changes: Float
+    var price: String
+    var changesPercentage: String
+    var companyName: String
     
+    init(ticker: String, changes: Float, price: String, changesPercentage: String, companyName: String) {
+        self.ticker = ticker
+        self.changes = changes
+        self.price = price
+        self.changesPercentage = changesPercentage
+        self.companyName = companyName
+    }
 }
 
 class APIObject : NSObject, ObservableObject {
     @Published var responseObj = [DataObject]()
+    @Published var dailyGainers = [StockObj]()
+    @Published var dailyLosers = [StockObj]()
     
     override init() {
         super.init()
+        self.getDailyGainers()
+        self.getDailyLosers()
     }
     
     func getBasicStockInfo(ticker: String) {
@@ -70,6 +90,44 @@ class APIObject : NSObject, ObservableObject {
             } catch {
                 DispatchQueue.main.async {
                     self.responseObj = []
+                }
+            }
+        }
+        .resume()
+    }
+    
+    func getDailyGainers() {
+        let fetchUrl = "\(url)gainers?apikey=\(apiKey)"
+        guard let url = URL(string: fetchUrl) else { return }
+        print(fetchUrl)
+        URLSession.shared.dataTask(with: url) { (data, _, _) in
+            do {
+                let data = try JSONDecoder().decode([StockObj].self, from: data!)
+                DispatchQueue.main.async {
+                    self.dailyGainers = data
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.dailyGainers = []
+                }
+            }
+        }
+        .resume()
+    }
+    
+    func getDailyLosers() {
+        let fetchUrl = "\(url)losers?apikey=\(apiKey)"
+        guard let url = URL(string: fetchUrl) else { return }
+        print(fetchUrl)
+        URLSession.shared.dataTask(with: url) { (data, _, _) in
+            do {
+                let data = try JSONDecoder().decode([StockObj].self, from: data!)
+                DispatchQueue.main.async {
+                    self.dailyGainers = data
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.dailyGainers = []
                 }
             }
         }
